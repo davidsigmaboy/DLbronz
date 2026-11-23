@@ -1,0 +1,121 @@
+import Foundation
+import AppKit
+import JavaScriptCore
+
+struct HTMLPage {
+    let title: String
+    let text: String
+    let imageURLs: [URL]
+    let scripts: [String]
+}
+
+func fetchPage(_ url: URL) async throws -> String {
+    var request = URLRequest(url: url)
+    request.setValue("DLbronz/0.1 (experimental)", forHTTPHeaderField: "User-Agent")
+    let (data, response) = try await URLSession.shared.data(for: request)
+    guard let http = response as? HTTPURLResponse,
+          (200..<400).contains(http.statusCode) else {
+        throw NSError(domain: "DLbronz", code: 1,
+                      userInfo: [NSLocalizedDescriptionKey: "HTTP request failed"])
+    }
+    return String(decoding: data, as: UTF8.self)
+}
+
+func parseHTML(_ html: String, baseURL: URL) -> HTMLPage {
+    // Lightweight extraction; deliberately not a full HTML5 parser.
+    let title = capture(#"<title[^>]*>(.*?)</title>"#, in: html)?
+        .replacingOccurrences(of: #"<[^>]+>"#, with: "")
+        .trimmingCharacters(in: .whitespacesAndNewlines) ?? baseURL.absoluteString
+
+    let scripts = matches(#"<script\b[^>]*>(.*?)</script>"#, in: html)
+    let imageURLs = matches(#"<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["'][^>]*>"#, in: html)
+        .compactMap { string -> URL? in
+            guard let src = capture(#"<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["'][^>]*>"#, in: string) else { return nil }
+            return URL(string: src, relativeTo: baseURL)?.absoluteURL
+        }
+
+    var visible = html
+    visible = visible.replacingOccurrences(of: #"(?is)<script\b[^>]*>.*?</script>"#, with: " ", options: .regularExpression)
+    visible = visible.replacingOccurrences(of: #"(?is)<style\b[^>]*>.*?</style>"#, with: " ", options: .regularExpression)
+    visible = visible.replacingOccurrences(of: #"(?is)<head\b[^>]*>.*?</head>"#, with: " ", options: .regularExpression)
+    visible = visible.replacingOccurrences(of: #"(?is)<[^>]+>"#, with: " ", options: .regularExpression)
+    visible = decodeEntities(visible)
+    visible = visible.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+    return HTMLPage(title: decodeEntities(title), text: visible, imageURLs: imageURLs, scripts: scripts)
+}
+
+func matches(_ pattern: String, in text: String) -> [String] {
+    guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]) else { return [] }
+    let range = NSRange(text.startIndex..., in: text)
+    return regex.matches(in: text, range: range).compactMap {
+        Range($0.range, in: text).map { String(text[$0]) }
+    }
+}
+func capture(_ pattern: String, in text: String) -> String? {
+    guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]),
+          let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+          match.numberOfRanges > 1,
+          let range = Range(match.range(at: 1), in: text) else { return nil }
+    return String(text[range])
+}
+func decodeEntities(_ text: String) -> String {
+    var s = text
+    let entities = ["&amp;":"&", "&lt;":"<", "&gt;":">", "&quot;":"\"", "&apos;":"'", "&nbsp;":" "]
+    for (key, value) in entities { s = s.replacingOccurrences(of: key, with: value) }
+    return s
+}
+
+func runScripts(_ scripts: [String]) {
+    let context = JSContext()!
+    context.exceptionHandler = { _, exception in
+        if let exception { print("JS error: \(exception)") }
+    }
+    for script in scripts {
+        // JS runs in a separate JSContext without browser DOM APIs.
+        context.evaluateScript(script)
+    }
+}
+
+func showImage(_ url: URL) async {
+    do {
+        let (data, _) = try await URLSession.shared.data(from: url)
+        if let image = NSImage(data: data) {
+            print("[Image: \(url.absoluteString), \(Int(image.size.width))x\(Int(image.size.height))]")
+        } else {
+            print("[Image failed to decode: \(url.absoluteString)]")
+        }
+    } catch {
+        print("[Image load failed: \(url.absoluteString): \(error.localizedDescription)]")
+    }
+}
+
+@main
+struct DLbronz {
+    static func main() async {
+        print("DLbronz 0.1 | Independent experimental Swift browser prototype")
+        print("Commands: open <URL>, quit")
+        while true {
+            print("\nDLbronz> ", terminator: "")
+            guard let line = readLine(), !line.isEmpty else { continue }
+            if line == "quit" || line == "exit" { break }
+            guard line.hasPrefix("open ") else {
+                print("Use: open https://example.com")
+                continue
+            }
+            let rawURL = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+            guard let url = URL(string: rawURL.hasPrefix("http") ? rawURL : "https://" + rawURL) else {
+                print("Invalid URL"); continue
+            }
+            do {
+                let html = try await fetchPage(url)
+                let page = parseHTML(html, baseURL: url)
+                print("\n=== \(page.title) ===\n")
+                print(page.text)
+                runScripts(page.scripts)
+                for imageURL in page.imageURLs.prefix(8) { await showImage(imageURL) }
+            } catch {
+                print("Load error: \(error.localizedDescription)")
+            }
+        }
+    }
+}

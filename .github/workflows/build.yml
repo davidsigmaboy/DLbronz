@@ -1,205 +1,14 @@
-========================================================================
-FILE: Sources/DLbronz/main.swift
-========================================================================
-import Foundation
-import JavaScriptCore
-import CRuntime
-import CppRenderer
-import Darwin
-
-@main
-struct DLbronzApp {
-    static func main() async {
-        print(String(cString: dlbronz_engine_version()))
-        print("Independent experimental engine. No Chromium/WebKit/Gecko.")
-        print("Commands: open <url> | js <code> | py <code> | quit")
-
-        while true {
-            print("\nDLbronz> ", terminator: "")
-            guard let line = readLine() else { break }
-            if line == "quit" || line == "exit" { break }
-
-            if line.hasPrefix("js ") {
-                runJavaScript(String(line.dropFirst(3)))
-            } else if line.hasPrefix("py ") {
-                runPython(String(line.dropFirst(3)))
-            } else if line.hasPrefix("open ") {
-                let raw = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
-                await openPage(raw)
-            } else {
-                print("Unknown command.")
-            }
-        }
-    }
-
-    static func openPage(_ raw: String) async {
-        let normalized = raw.hasPrefix("http://") || raw.hasPrefix("https://") ? raw : "https://" + raw
-        guard dlbronz_is_http_url(normalized) == 1, let url = URL(string: normalized) else {
-            print("Invalid URL")
-            return
-        }
-
-        do {
-            var request = URLRequest(url: url)
-            request.setValue("DLbronz/0.1", forHTTPHeaderField: "User-Agent")
-            let (data, response) = try await URLSession.shared.data(for: request)
-            if let http = response as? HTTPURLResponse, !(200..<400).contains(http.statusCode) {
-                print("HTTP status: \(http.statusCode)")
-                return
-            }
-            let html = String(decoding: data, as: UTF8.self)
-            let renderedPointer = html.withCString { dlbronz_render_html_text($0) }
-            guard let renderedPointer else {
-                print("Renderer allocation failed")
-                return
-            }
-            defer { free(renderedPointer) }
-            let visible = String(cString: renderedPointer)
-            print("\n--- \(url.absoluteString) ---\n")
-            print(visible.prefix(12000))
-            print("\n[Prototype renderer: text extraction only; no CSS layout or image painting yet]")
-        } catch {
-            print("Load error: \(error.localizedDescription)")
-        }
-    }
-
-    static func runJavaScript(_ source: String) {
-        let context = JSContext()!
-        context.exceptionHandler = { _, error in
-            if let error { print("JavaScript error: \(error)") }
-        }
-        let result = context.evaluateScript(source)
-        if let result, !result.isUndefined { print(result) }
-    }
-
-    static func runPython(_ source: String) {
-        // macOS-only bridge: invokes the system Python 3 interpreter.
-        // This is NOT available in an iOS app sandbox.
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["python3", "-c", source]
-        let output = Pipe()
-        process.standardOutput = output
-        process.standardError = output
-        do {
-            try process.run()
-            process.waitUntilExit()
-            let data = output.fileHandleForReading.readDataToEndOfFile()
-            print(String(decoding: data, as: UTF8.self))
-            if process.terminationStatus != 0 {
-                print("Python exited with status \(process.terminationStatus)")
-            }
-        } catch {
-            print("Python 3 unavailable: \(error.localizedDescription)")
-        }
-    }
-}
-
-
-========================================================================
-FILE: Sources/CppRenderer/Renderer.cpp
-========================================================================
-#include "Renderer.hpp"
-#include <cctype>
-#include <cstdlib>
-#include <cstring>
-
-namespace dlbronz {
-std::string renderHTMLText(const std::string& html) {
-    std::string out;
-    bool inTag = false;
-    bool pendingSpace = false;
-
-    for (char ch : html) {
-        if (ch == '<') {
-            inTag = true;
-            pendingSpace = true;
-            continue;
-        }
-        if (ch == '>') {
-            inTag = false;
-            continue;
-        }
-        if (inTag) continue;
-
-        if (std::isspace(static_cast<unsigned char>(ch))) {
-            pendingSpace = true;
-            continue;
-        }
-        if (pendingSpace && !out.empty()) out += ' ';
-        pendingSpace = false;
-        out += ch;
-    }
-    return out;
-}
-}
-
-extern "C" char *dlbronz_render_html_text(const char *html) {
-    if (!html) return nullptr;
-    const std::string rendered = dlbronz::renderHTMLText(html);
-    char *result = static_cast<char *>(std::malloc(rendered.size() + 1));
-    if (!result) return nullptr;
-    std::memcpy(result, rendered.c_str(), rendered.size() + 1);
-    return result;
-}
-
-
-========================================================================
-FILE: Sources/CppRenderer/include/Renderer.hpp
-========================================================================
-#pragma once
-#include <string>
-
-namespace dlbronz {
-    std::string renderHTMLText(const std::string& html);
-}
-
-extern "C" char *dlbronz_render_html_text(const char *html);
-
-
-========================================================================
-FILE: Sources/CRuntime/runtime.c
-========================================================================
-#include "dlbronz_c.h"
-#include <string.h>
-
-int dlbronz_is_http_url(const char *url) {
-    if (url == NULL) return 0;
-    return strncmp(url, "https://", 8) == 0 ||
-           strncmp(url, "http://", 7) == 0;
-}
-
-const char *dlbronz_engine_version(void) {
-    return "DLbronz 0.1-multilang";
-}
-
-
-========================================================================
-FILE: Sources/CRuntime/include/dlbronz_c.h
-========================================================================
-#ifndef DLBRONZ_C_H
-#define DLBRONZ_C_H
-#ifdef __cplusplus
-extern "C" {
-#endif
-int dlbronz_is_http_url(const char *url);
-const char *dlbronz_engine_version(void);
-#ifdef __cplusplus
-}
-#endif
-#endif
-
-
-========================================================================
-FILE: .github/workflows/build.yml
-========================================================================
 name: Build DLbronz
 
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-macos:
@@ -211,57 +20,32 @@ jobs:
       - name: Show Swift version
         run: swift --version
 
-      - name: Build
-        run: swift build -c release
-
-      - name: Run tests / smoke check
-        run: .build/release/DLbronz <<'EOF'
-js 6 * 7
-py print("Python runtime works")
-quit
-EOF
-
-      - name: Package executable
+      - name: Build (debug) and self-test
         run: |
-          mkdir -p dist
-          cp .build/release/DLbronz dist/
-          cp README.md dist/
-          cd dist
-          zip -r ../DLbronz-macos.zip .
+          swift build
+          .build/debug/DLbronz --selftest
 
-      - name: Upload artifact
+      - name: Build app bundle (universal)
+        run: |
+          chmod +x scripts/make-app.sh
+          ./scripts/make-app.sh
+
+      - name: Upload zip
         uses: actions/upload-artifact@v4
         with:
-          name: DLbronz-macos
-          path: DLbronz-macos.zip
+          name: DLbronz-macos-zip
+          path: dist/DLbronz-macos.zip
 
+      - name: Upload dmg
+        uses: actions/upload-artifact@v4
+        with:
+          name: DLbronz-macos-dmg
+          path: dist/DLbronz.dmg
 
-========================================================================
-FILE: Package.swift
-========================================================================
-// swift-tools-version: 5.9
-import PackageDescription
-
-let package = Package(
-    name: "DLbronz",
-    platforms: [.macOS(.v13)],
-    products: [.executable(name: "DLbronz", targets: ["DLbronz"])],
-    targets: [
-        .target(
-            name: "CRuntime",
-            publicHeadersPath: "include"
-        ),
-        .target(
-            name: "CppRenderer",
-            publicHeadersPath: "include",
-            cxxSettings: [.headerSearchPath("include")]
-        ),
-        .executableTarget(
-            name: "DLbronz",
-            dependencies: ["CRuntime", "CppRenderer"],
-            path: "Sources/DLbronz"
-        )
-    ],
-    cxxLanguageStandard: .cxx17
-)
-
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/DLbronz-macos.zip
+            dist/DLbronz.dmg

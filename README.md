@@ -8,7 +8,9 @@
 
 Режимы: **Page** (загрузка страницы и вывод текста, оригинальное ядро), **Firefox** и **JavaScript**.
 
-**Firefox** это необязательный рендерер (`App/WebRenderView.swift`): WKWebView с User-Agent Firefox для iOS. Это не Gecko: Gecko нельзя встроить в iOS-приложение, и сам Firefox для iOS рисует страницы через WebKit. Ядро `DLbronzEngine` этим режимом не затронуто. Режим Python на iOS недоступен: в песочнице нет системного интерпретатора. На macOS он работает через `python3`.
+**Firefox** это необязательный рендерер (`App/WebRenderView.swift`): WKWebView с User-Agent Firefox для iOS. Это не Gecko: Gecko нельзя встроить в iOS-приложение, и сам Firefox для iOS рисует страницы через WebKit. Ядро `DLbronzEngine` этим режимом не затронуто.
+
+Под веб-видом в режиме Firefox есть консоль: **JS** выполняет код прямо в открытой странице, **🐍** выполняет Python через Pyodide (CPython в WebAssembly, работает и на iOS). Pyodide подгружается с jsdelivr при первом запуске, нужен интернет. Режим Python на iOS недоступен: в песочнице нет системного интерпретатора. На macOS он работает через `python3`.
 
 ## Сборка .ipa в GitHub Actions
 

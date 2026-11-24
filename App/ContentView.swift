@@ -3,6 +3,7 @@ import DLbronzEngine
 
 enum Mode: String, CaseIterable, Identifiable {
     case page = "Page"
+    case firefox = "Firefox"
     case javascript = "JavaScript"
     case python = "Python"
     var id: String { rawValue }
@@ -10,15 +11,15 @@ enum Mode: String, CaseIterable, Identifiable {
     /// Python needs a system interpreter, which iOS does not have.
     static var available: [Mode] {
         #if os(macOS)
-        return [.page, .javascript, .python]
+        return [.page, .firefox, .javascript, .python]
         #else
-        return [.page, .javascript]
+        return [.page, .firefox, .javascript]
         #endif
     }
 
     var placeholder: String {
         switch self {
-        case .page: return "example.com"
+        case .page, .firefox: return "example.com"
         case .javascript: return "6 * 7"
         case .python: return "print('hello')"
         }
@@ -31,10 +32,15 @@ final class Model: ObservableObject {
     @Published var input = ""
     @Published var output = "\(Engine.version)\n\(Engine.banner)"
     @Published var busy = false
+    @Published var webURL: URL?
 
     func run() {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !busy else { return }
+        if mode == .firefox {
+            webURL = FirefoxRenderer.url(from: text)
+            return
+        }
         busy = true
         let mode = mode
         Task {
@@ -47,6 +53,8 @@ final class Model: ObservableObject {
                 result = await Task.detached { Engine.runJavaScript(text) }.value
             case .python:
                 result = await Task.detached { Engine.runPython(text) }.value
+            case .firefox:
+                return
             }
             output = result
             busy = false
@@ -75,22 +83,27 @@ struct ContentView: View {
                     #endif
                     .submitLabel(.go)
                     .onSubmit { model.run() }
-                Button(model.mode == .page ? "Open" : "Run") { model.run() }
+                Button(model.mode == .page || model.mode == .firefox ? "Open" : "Run") { model.run() }
                     .buttonStyle(.borderedProminent)
                     .disabled(model.busy)
             }
 
-            ScrollView {
-                Text(model.output)
-                    .font(.system(.footnote, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .padding(8)
-            }
-            .background(.quaternary)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(alignment: .topTrailing) {
-                if model.busy { ProgressView().padding(8) }
+            if model.mode == .firefox {
+                WebRenderView(url: model.webURL)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                ScrollView {
+                    Text(model.output)
+                        .font(.system(.footnote, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .padding(8)
+                }
+                .background(.quaternary)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(alignment: .topTrailing) {
+                    if model.busy { ProgressView().padding(8) }
+                }
             }
         }
         .padding()

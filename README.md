@@ -6,7 +6,9 @@
 - **C++**: рендерер, который достаёт видимый текст из HTML (`Sources/CppRenderer`)
 - **C**: проверка URL и версия движка (`Sources/CRuntime`)
 
-Режимы: **Page** (загрузка страницы и вывод текста) и **JavaScript**. Режим Python на iOS недоступен: в песочнице нет системного интерпретатора. На macOS он работает через `python3`.
+Режимы: **Page** (загрузка страницы и вывод текста, оригинальное ядро), **Firefox** и **JavaScript**.
+
+**Firefox** это необязательный рендерер (`App/WebRenderView.swift`): WKWebView с User-Agent Firefox для iOS. Это не Gecko: Gecko нельзя встроить в iOS-приложение, и сам Firefox для iOS рисует страницы через WebKit. Ядро `DLbronzEngine` этим режимом не затронуто. Режим Python на iOS недоступен: в песочнице нет системного интерпретатора. На macOS он работает через `python3`.
 
 ## Сборка .ipa в GitHub Actions
 

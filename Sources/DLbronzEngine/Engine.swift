@@ -79,8 +79,13 @@ public enum Engine {
 
     // MARK: Python (system python3, macOS only)
 
+    #if os(iOS)
     public static func runPython(_ source: String) -> String {
-        // Invokes the system Python 3 interpreter. Not available in an iOS sandbox.
+        "Python is not available on iOS (no system interpreter in the app sandbox)."
+    }
+    #else
+    public static func runPython(_ source: String) -> String {
+        // Invokes the system Python 3 interpreter.
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["python3", "-c", source]
@@ -100,20 +105,5 @@ public enum Engine {
             return "Python 3 unavailable: \(error.localizedDescription)"
         }
     }
-
-    // MARK: Self test (used by CI)
-
-    public static func selfTest() -> Bool {
-        var ok = true
-        func check(_ name: String, _ actual: String, _ expected: String) {
-            let pass = actual == expected
-            print("[\(pass ? "PASS" : "FAIL")] \(name): \(actual)")
-            if !pass { ok = false }
-        }
-        check("version", version, "DLbronz 0.1-multilang")
-        check("c++ renderer", renderHTML("<p>Hi <b>there</b></p>") ?? "nil", "Hi there")
-        check("javascript", runJavaScript("6 * 7"), "42")
-        check("python", runPython("print('Python runtime works')"), "Python runtime works")
-        return ok
-    }
+    #endif
 }

@@ -3,8 +3,8 @@ import PackageDescription
 
 let package = Package(
     name: "DLbronz",
-    platforms: [.macOS(.v13)],
-    products: [.executable(name: "DLbronz", targets: ["DLbronz"])],
+    platforms: [.macOS(.v13), .iOS(.v16)],
+    products: [.library(name: "DLbronzEngine", targets: ["DLbronzEngine"])],
     targets: [
         .target(
             name: "CRuntime",
@@ -18,8 +18,8 @@ let package = Package(
             name: "DLbronzEngine",
             dependencies: ["CRuntime", "CppRenderer"]
         ),
-        .executableTarget(
-            name: "DLbronz",
+        .testTarget(
+            name: "DLbronzEngineTests",
             dependencies: ["DLbronzEngine"]
         )
     ],

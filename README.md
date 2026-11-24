@@ -1,32 +1,33 @@
 # DLbronz
 
-Экспериментальное macOS-приложение (SwiftUI) на нескольких языках. Без Chromium / WebKit / Gecko.
+Экспериментальное iOS-приложение (SwiftUI) на нескольких языках. Без Chromium / WebKit / Gecko.
 
-- **Swift / SwiftUI**: окно приложения, сеть, JavaScript через JavaScriptCore
+- **Swift / SwiftUI**: интерфейс, сеть, JavaScript через JavaScriptCore (`App/`, `Sources/DLbronzEngine`)
 - **C++**: рендерер, который достаёт видимый текст из HTML (`Sources/CppRenderer`)
 - **C**: проверка URL и версия движка (`Sources/CRuntime`)
-- **Python**: запуск системного `python3` (только macOS)
 
-В приложении три режима: **Page** (загрузка страницы и вывод текста), **JavaScript** и **Python**.
+Режимы: **Page** (загрузка страницы и вывод текста) и **JavaScript**. Режим Python на iOS недоступен: в песочнице нет системного интерпретатора. На macOS он работает через `python3`.
 
-## Сборка
+## Сборка .ipa в GitHub Actions
 
-Локально, на macOS 13+ с Xcode / Swift 5.9+:
+Workflow `.github/workflows/build.yml` на каждый push и pull request:
 
-```bash
-swift run DLbronz            # запуск приложения
-swift run DLbronz --selftest # быстрая проверка без окна
-./scripts/make-app.sh        # dist/DLbronz.app, .zip и .dmg
-```
+1. прогоняет тесты движка (`swift test`),
+2. генерирует Xcode-проект из `project.yml` (XcodeGen),
+3. собирает приложение без подписи и пакует `DLbronz.ipa`,
+4. выкладывает его как artifact `DLbronz-ipa`.
 
-## GitHub Actions
+При пуше тега `v*` (например `v0.1.0`) `.ipa` публикуется в GitHub Release.
 
-Workflow `.github/workflows/build.yml` на каждый push и pull request собирает universal-приложение (arm64 + x86_64), прогоняет self-test и выкладывает `DLbronz.zip` и `DLbronz.dmg` как artifacts. При пуше тега `v*` (например `v0.1.0`) файлы публикуются в GitHub Release.
+## Установка
 
-## Запуск неподписанного приложения
+`.ipa` **не подписан**, поэтому напрямую на iPhone он не встанет. Его нужно подписать своим Apple ID одним из способов: AltStore, Sideloadly, SideStore, либо установить через TrollStore.
 
-Приложение подписано ad-hoc, а не Apple Developer ID, поэтому при первом запуске macOS может его заблокировать. Откройте его через правый клик → **Открыть**, или снимите карантин:
+## Локально
 
 ```bash
-xattr -dr com.apple.quarantine DLbronz.app
+brew install xcodegen
+xcodegen generate
+open DLbronz.xcodeproj
+swift test   # тесты движка на macOS
 ```

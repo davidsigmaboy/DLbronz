@@ -7,6 +7,15 @@ enum Mode: String, CaseIterable, Identifiable {
     case python = "Python"
     var id: String { rawValue }
 
+    /// Python needs a system interpreter, which iOS does not have.
+    static var available: [Mode] {
+        #if os(macOS)
+        return [.page, .javascript, .python]
+        #else
+        return [.page, .javascript]
+        #endif
+    }
+
     var placeholder: String {
         switch self {
         case .page: return "example.com"
@@ -51,7 +60,7 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 12) {
             Picker("Mode", selection: $model.mode) {
-                ForEach(Mode.allCases) { Text($0.rawValue).tag($0) }
+                ForEach(Mode.available) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -60,23 +69,28 @@ struct ContentView: View {
                 TextField(model.mode.placeholder, text: $model.input)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(.body, design: .monospaced))
+                    .autocorrectionDisabled()
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
+                    .submitLabel(.go)
                     .onSubmit { model.run() }
                 Button(model.mode == .page ? "Open" : "Run") { model.run() }
-                    .keyboardShortcut(.return, modifiers: .command)
+                    .buttonStyle(.borderedProminent)
                     .disabled(model.busy)
             }
 
             ScrollView {
                 Text(model.output)
-                    .font(.system(.body, design: .monospaced))
+                    .font(.system(.footnote, design: .monospaced))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .padding(8)
             }
-            .background(Color(nsColor: .textBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .background(.quaternary)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(alignment: .topTrailing) {
-                if model.busy { ProgressView().controlSize(.small).padding(8) }
+                if model.busy { ProgressView().padding(8) }
             }
         }
         .padding()

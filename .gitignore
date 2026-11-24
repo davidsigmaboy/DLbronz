@@ -1,5 +1,8 @@
 .build/
 .swiftpm/
+build/
 dist/
+Payload/
 *.xcodeproj
+App/Info.plist
 .DS_Store

@@ -14,6 +14,19 @@
 
 Под веб-видом в режиме Firefox есть консоль: **JS** выполняет код прямо в открытой странице, **🐍** выполняет Python через Pyodide (CPython в WebAssembly, работает и на iOS). Pyodide подгружается с jsdelivr при первом запуске, нужен интернет. Режим Python на iOS недоступен: в песочнице нет системного интерпретатора. На macOS он работает через `python3`.
 
+## Linux
+
+`rust/dlbronz_linux` это версия для Linux на том же Rust-ядре: окно (minifb, X11/Wayland через XWayland), адресная строка (Ctrl+L), ссылки, история (Backspace), прокрутка, JS-DOM на QuickJS (тот же `dom.js`, что и в iOS-версии; копия синхронизируется скриптом `scripts/extract-dom-js.py`). Режим `--png` рисует страницу без окна.
+
+```bash
+sudo apt install fonts-dejavu-core        # нужен любой TTF-шрифт, либо DLBRONZ_FONT=/путь/к/шрифту.ttf
+cargo build --release --manifest-path rust/dlbronz_linux/Cargo.toml
+rust/dlbronz_linux/target/release/dlbronz-linux https://example.com
+rust/dlbronz_linux/target/release/dlbronz-linux samples/test.html --png out.png
+```
+
+Готовая сборка x86_64 лежит в artifacts Actions (`DLbronz-linux-x86_64`), вместе со скриншотом примера.
+
 ## Сборка .ipa в GitHub Actions
 
 Workflow `.github/workflows/build.yml` на каждый push и pull request:

@@ -1,0 +1,25 @@
+[package]
+name = "dlbronz-linux"
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+
+[[bin]]
+name = "dlbronz-linux"
+path = "src/main.rs"
+
+[dependencies]
+dlbronz_web = { path = "../dlbronz_web" }
+rquickjs = "0.6"
+ureq = "2"
+url = "2"
+serde_json = "1"
+fontdue = "0.9"
+minifb = "0.27"
+png = "0.17"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

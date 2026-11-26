@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>DLbronz sample</title>
+<style>
+  :root { --accent: #b45309; --soft: #fef3c7; }
+  body { font-family: sans-serif; margin: 0; background: #fffdf7; color: #222; }
+  header { background: var(--accent); color: #fff; padding: 16px 24px; }
+  header h1 { margin: 0; font-size: 28px; }
+  main { max-width: 720px; margin: 0 auto; padding: 8px 24px; }
+  .cards { display: flex; gap: 12px; }
+  .card { background: var(--soft); border: 1px solid #e5c07b; padding: 12px; }
+  .card h3 { margin: 0 0 6px; }
+  code { background: #eee; padding: 0 4px; }
+  a { color: #0b5fff; }
+  #js { border-left: 4px solid var(--accent); padding-left: 10px; }
+  @media (max-width: 300px) { body { background: #000 } }
+  table td { border: 1px solid #999; padding: 4px 8px; }
+</style>
+</head>
+<body>
+<header><h1>DLbronz</h1><div>HTML5 parser + CSS + layout + JS DOM</div></header>
+<main>
+  <h2>Text and lists</h2>
+  <p>This paragraph has <b>bold</b>, <i>italic</i>, <u>underlined</u> text, <code>inline code</code>
+     and a <a href="https://example.com/">link</a> that should wrap across lines when the viewport is narrow enough to need it.</p>
+  <ul><li>First item</li><li>Second item</li></ul>
+  <ol><li>One</li><li>Two</li><li>Three</li></ol>
+  <h2>Flex row</h2>
+  <div class="cards">
+    <div class="card"><h3>Parser</h3>html5ever</div>
+    <div class="card"><h3>Style</h3>cascade, var(), @media</div>
+    <div class="card"><h3>Layout</h3>blocks and inline flow</div>
+  </div>
+  <h2>Table</h2>
+  <table><tr><td>a1</td><td>b1</td></tr><tr><td>a2</td><td>b2</td></tr></table>
+  <h2>Script</h2>
+  <div id="js">not run</div>
+  <p>Unclosed markup:<p>second paragraph<b>bold never closed
+</main>
+<script>
+  var box = document.getElementById('js');
+  box.textContent = 'Rendered after JS ran: ' + [1, 2, 3].map(function (n) { return n * n; }).join(', ');
+  var li = document.createElement('li');
+  li.textContent = 'Added by script';
+  document.querySelector('ul').appendChild(li);
+  document.querySelector('ol').innerHTML = '<li>Set</li><li>via</li><li>innerHTML</li>';
+  console.log('sample script finished');
+</script>
+</body>
+</html>

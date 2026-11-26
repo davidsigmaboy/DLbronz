@@ -8,6 +8,8 @@
 
 Режимы: **Page** (загрузка страницы и вывод текста, оригинальное ядро), **Firefox** и **JavaScript**.
 
+**Render** это наш собственный рендерер страниц. Ядро на Rust (`rust/dlbronz_web`): парсер HTML5 **html5ever** (тот же, что в Servo и Firefox), каскад CSS (селекторы, specificity, `!important`, `var()`, `@media`, flex-строки, таблицы, списки), блочная и строчная вёрстка. Рисует SwiftUI Canvas. Для скриптов страницы есть свой JS-DOM поверх JavaScriptCore (`Sources/DLbronzEngine/JSDOM.swift`): `document`, `querySelector`, `innerHTML` (через html5ever), события, таймеры. Скрипты выполняются при загрузке, после них страница верстается заново. Картинки пока серые заглушки, интерактивности после загрузки нет, `fetch` не поддерживается. Это не Gecko и не код Firefox, кроме html5ever.
+
 **Firefox** это необязательный рендерер (`App/WebRenderView.swift`): WKWebView с User-Agent Firefox для iOS. Это не Gecko: Gecko нельзя встроить в iOS-приложение, и сам Firefox для iOS рисует страницы через WebKit. Ядро `DLbronzEngine` этим режимом не затронуто.
 
 Под веб-видом в режиме Firefox есть консоль: **JS** выполняет код прямо в открытой странице, **🐍** выполняет Python через Pyodide (CPython в WebAssembly, работает и на iOS). Pyodide подгружается с jsdelivr при первом запуске, нужен интернет. Режим Python на iOS недоступен: в песочнице нет системного интерпретатора. На macOS он работает через `python3`.
@@ -30,6 +32,8 @@ Workflow `.github/workflows/build.yml` на каждый push и pull request:
 ## Локально
 
 ```bash
+./scripts/test-core.sh               # тесты Rust-ядра, нужен только rustc
+./scripts/build-rust-xcframework.sh  # Frameworks/DLbronzWeb.xcframework, нужен перед swift test / xcodegen
 brew install xcodegen
 xcodegen generate
 open DLbronz.xcodeproj

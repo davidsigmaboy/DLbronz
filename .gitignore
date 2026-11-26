@@ -6,3 +6,6 @@ Payload/
 *.xcodeproj
 App/Info.plist
 .DS_Store
+Frameworks/
+rust/dlbronz_web/target/
+rust/dlbronz_web/Cargo.lock.bak

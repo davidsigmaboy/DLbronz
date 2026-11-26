@@ -14,9 +14,15 @@ let package = Package(
             name: "CppRenderer",
             publicHeadersPath: "include"
         ),
+        // Rust core (html5ever parser, CSS cascade, layout). Built by
+        // scripts/build-rust-xcframework.sh before Swift builds.
+        .binaryTarget(
+            name: "DLbronzWeb",
+            path: "Frameworks/DLbronzWeb.xcframework"
+        ),
         .target(
             name: "DLbronzEngine",
-            dependencies: ["CRuntime", "CppRenderer"]
+            dependencies: ["CRuntime", "CppRenderer", "DLbronzWeb"]
         ),
         .testTarget(
             name: "DLbronzEngineTests",

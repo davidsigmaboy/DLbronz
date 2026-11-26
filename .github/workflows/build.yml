@@ -17,10 +17,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Show toolchain
+      - name: Show toolchains
         run: |
           swift --version
           xcodebuild -version
+          rustc --version
+          cargo --version
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/dlbronz_web/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('rust/dlbronz_web/Cargo.toml') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - name: Rust core tests (no dependencies)
+        run: ./scripts/test-core.sh
+
+      - name: Build Rust xcframework (iOS, iOS simulator, macOS)
+        run: ./scripts/build-rust-xcframework.sh
 
       - name: Engine tests (macOS)
         run: swift test

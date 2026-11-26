@@ -1,0 +1,20 @@
+[package]
+name = "dlbronz_web"
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+# html5ever (the HTML5 parser used by Servo and Firefox's parser spec) via scraper
+scraper = "0.20"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(dlbronz_core_only)'] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1

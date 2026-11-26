@@ -9,8 +9,8 @@ jobs:
           cd rust/dlbronz_linux
           mkdir -p .cargo
           cargo vendor > .cargo/config.toml
-          tar -czf ../../dlbronz-vendor.tar.gz vendor Cargo.lock
+          tar -cJf ../../dlbronz-vendor.tar.xz vendor Cargo.lock
       - uses: actions/upload-artifact@v4
         with:
           name: dlbronz-vendor
-          path: dlbronz-vendor.tar.gz
+          path: dlbronz-vendor.tar.xz

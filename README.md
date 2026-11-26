@@ -29,7 +29,7 @@ rust/dlbronz_linux/target/release/dlbronz-linux samples/test.html --png out.png
 
 ## Сборка .ipa в GitHub Actions
 
-Workflow `.github/workflows/build.yml` на каждый push и pull request:
+Workflow `.github/workflows/ios.yml` (отдельный от `linux.yml`) на каждый push и pull request:
 
 1. прогоняет тесты движка (`swift test`),
 2. генерирует Xcode-проект из `project.yml` (XcodeGen),
